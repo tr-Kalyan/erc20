@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
-import {Counter} from "../src/Counter.sol";
+import {ERC20Mock} from "../src/ERC20Mock.sol";
 
-contract CounterScript is Script {
-    Counter public counter;
+contract ERC20MockScript is Script {
+    ERC20Mock public token;
 
     function setUp() public {}
 
     function run() public {
         vm.startBroadcast();
 
-        counter = new Counter();
+        token = new ERC20Mock("TestToken", "TST", 18);
 
         vm.stopBroadcast();
     }
