@@ -42,6 +42,35 @@ contract ERC20 is IERC20, IERC20Metadata, IERC20Errors {
         _decimals = _decimals;
     }
 
+    modifier checkAllowance(address approver, address from, uint256 _balanceToDeduct) {
+        require(_allowance[approver][from] >= _balanceToDeduct, ERC20InsufficientAllowance(from, _allowance[approver][from], _balanceToDeduct));
+    }
+
+    modifier invalidApprover(address approver) {
+        require(approver != address(0), ERC20InvalidApprover(approver));
+      _;
+    }
+
+    modifier invalidSpender(address spender) {
+        require(spender != address(0), ERC20InvalidSpender(spender));
+      _;
+    }
+
+    modifier checkBalanceBeforeDeduction(address from, uint256 _balanceToDeduct) {
+        require(balances[from] >= _balanceToDeduct, ERC20InsufficientBalance(from, balances[from], _balanceToDeduct));
+      _;
+    }
+
+    modifier invalidSender(address sender) {
+        require(sender != address(0), ERC20InvalidSender(sender));
+      _;
+    }
+
+    modifier invalidReceiver(address receiver) {
+        require(receiver != address(0), ERC20InvalidReceiver(receiver));
+      _;
+    }
+
     function name() external virtual view returns (string memory) {
         return _name;
     }
@@ -62,13 +91,12 @@ contract ERC20 is IERC20, IERC20Metadata, IERC20Errors {
         return balances[account];
     }
 
-    function transfer(address from, address to, uint256 value) external virtual returns (bool) {
+    function transfer(address to, uint256 value) external virtual returns (bool) {
         address sender = msg.sender;
-        _deductAllowance(spender, from, value);
-        _deductToken(from, value);
+        _deductToken(sender, value);
         _addToken(to, value);
 
-        emit Transfer(from, to, value);
+        emit Transfer(sender, to, value);
         return true;
     }
 
@@ -86,11 +114,52 @@ contract ERC20 is IERC20, IERC20Metadata, IERC20Errors {
     }
 
 
+    function transferFrom(address from, address to, uint256 value) external virtual returns(bool) {
+        address spender = msg.sender;
+        _deductAllowance(spender, from, value);
+        _deductToken(from, value);
+        _addToken(to, value);
+
+        emit Transfer(from, to, value);
+        return true;
+    }
+
     function _addAllowance(address from, address approver, uint256 value) internal invalidApprover(approver) invalidSpender(from) {
         unchecked {
             _allowance[approver][from] +=value;
         }
     }
 
+    function _deductAllowance(address from, address approver,uint25 value) internal invalidApprover(approver) invalidSpender(from) checkAllowance(approver, from, value)  {
+        unchecked {
+            _allowance[approver][from] -= value;
+        }
+    }
+
+    function _deductToken(address from, uint256 amount) internal invalidSender(from) checkBalanceBeforeDeduction(from, amount) {
+        unchecked {
+            balances[from] -= amount;
+        }
+    }
+
+    function _addToken(address to, uint256 amount) internal invalidReceiver(to) {
+      unchecked {
+        balances[to] += amount;
+      }
+    }
+
+    function _mint(address to, uint256 amount) internal invalidReceiver(to) {
+     unchecked {
+      _totalSupply += amount;
+      balances[to] += amount;
+     }
+    }
+
+    function _burn(address from, uint256 amount) internal checkBalanceBeforeDeduction(from, amount) invalidSender(from) {
+     unchecked {
+      _totalSupply -= amount;
+      balances[from] -= amount;
+     }
+    }
 }
 
